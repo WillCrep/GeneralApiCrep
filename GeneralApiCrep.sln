@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeneralCrep.Api", "GeneralCrep.Api\GeneralCrep.Api.csproj", "{B339D78F-CA42-48D7-8F94-C4F49D69C392}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B339D78F-CA42-48D7-8F94-C4F49D69C392}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B339D78F-CA42-48D7-8F94-C4F49D69C392}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B339D78F-CA42-48D7-8F94-C4F49D69C392}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B339D78F-CA42-48D7-8F94-C4F49D69C392}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A0E035B1-9EA6-4003-96BB-3EB7EE2704A9}
+	EndGlobalSection
+EndGlobal
