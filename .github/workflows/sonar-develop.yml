@@ -28,11 +28,11 @@ jobs:
 
       # 🧪 Restaurar dependencias
       - name: Restore dependencies
-        run: dotnet restore ./GeneralCrep.sln
+        run: dotnet restore ./GeneralApiCrep.sln
 
       # 🧱 Compilar solución
       - name: Build solution
-        run: dotnet build ./GeneralCrep.sln --no-restore --configuration Release
+        run: dotnet build ./GeneralApiCrep.sln --no-restore --configuration Release
 
       # 🧪 Ejecutar tests con cobertura
       - name: Run tests with coverage
