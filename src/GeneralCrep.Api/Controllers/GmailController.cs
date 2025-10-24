@@ -103,7 +103,6 @@ namespace GeneralCrep.Api.Controllers
             }
         }
 
-
         //  Nuevo endpoint: inicia flujo OAuth
         [HttpGet("login")]
         [ApiExplorerSettings(IgnoreApi = true)]

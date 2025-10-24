@@ -142,6 +142,7 @@ namespace GeneralCrep.Infrastructure.External
         {
             if (_service == null)
                 await InitializeServiceAsync();
+
             // 1) Buscar por asunto (devuelve lista de ids)
             var listReq = _service.Users.Messages.List("me");
             listReq.Q = $"subject:{subject}";
@@ -187,6 +188,9 @@ namespace GeneralCrep.Infrastructure.External
 
         public async Task<List<Message>> GetEmailsByLabelAsync(string labelName, int maxResults = 10)
         {
+            if (_service == null)
+                await InitializeServiceAsync();
+
             // 1️⃣ Obtener todas las etiquetas para mapear el nombre al ID real
             var labelsList = await _service.Users.Labels.List("me").ExecuteAsync();
             var label = labelsList.Labels.FirstOrDefault(l => l.Name.Equals(labelName, StringComparison.OrdinalIgnoreCase));
