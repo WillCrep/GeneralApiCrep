@@ -29,9 +29,9 @@
       "applicationUrl": "https://localhost:7134;http://localhost:5258",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "GMAIL_CLIENT_ID": "239464291099-rveq01p247586717vta3a84qvmnkq3hq.apps.googleusercontent.com",
-        "GMAIL_CLIENT_SECRET": "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",
-        "GMAIL_REDIRECT_URI": "https://localhost:7134/api/gmail/oauth2callback"
+        "GMAIL_CLIENT_ID": "",
+        "GMAIL_CLIENT_SECRET": "",
+        "GMAIL_REDIRECT_URI": ""
       }
     },
     "IIS Express": {
