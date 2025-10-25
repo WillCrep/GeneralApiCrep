@@ -1,4 +1,6 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using GeneralCrep.Application.Dtos;
+using GeneralCrep.Application.Interfaces;
+using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Gmail.v1;
 using Google.Apis.Gmail.v1.Data;
@@ -7,12 +9,13 @@ using Google.Apis.Util.Store;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace GeneralCrep.Infrastructure.External
 {
-    public class GmailApiClient
+    public class GmailApiClient : IGmailApiClient
     {
         private readonly string[] Scopes = { GmailService.Scope.GmailReadonly };
         private readonly string ApplicationName = "GeneralCrep Gmail Integration";
@@ -107,7 +110,7 @@ namespace GeneralCrep.Infrastructure.External
             });
         }
 
-        public async Task<List<Message>> GetRecentEmailsAsync(int maxResults = 5)
+        public async Task<List<string>> GetRecentEmailsAsync(int maxResults = 5)
         {
             if (_service == null)
                 await InitializeServiceAsync();
@@ -115,30 +118,63 @@ namespace GeneralCrep.Infrastructure.External
             var request = _service.Users.Messages.List("me");
             request.MaxResults = maxResults;
             var response = await request.ExecuteAsync();
-
-            return response.Messages?.ToList() ?? new List<Message>();
+            var emailsId = response.Messages?.Select(m => m.Id).ToList() ?? new List<string>();
+            return emailsId;
         }
 
-        public async Task<Message> GetEmailByIdAsync(string messageId)
+        public async Task<IEnumerable<MessageGmailPartsDto>> GetEmailByIdAsync(string messageId)
         {
             if (_service == null)
                 await InitializeServiceAsync();
 
+            List<MessageGmailPartsDto> messagePartsDtos = new List<MessageGmailPartsDto>();
+            var request = _service.Users.Messages.Get("me", messageId);
+            request.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Full;
+            var fullMessage = await request.ExecuteAsync();
+            if (fullMessage?.Payload?.Parts != null)
+            {
+                foreach (var part in fullMessage.Payload.Parts)
+                {
+                    if (!string.IsNullOrEmpty(part.Filename) && part.Body?.AttachmentId != null)
+                    {
+                        messagePartsDtos.Add(new MessageGmailPartsDto
+                        {
+                            Filename = part.Filename,
+                            AttachmentId = part.Body.AttachmentId
+                        });
+                    }
+                }
+            }
+            return messagePartsDtos;
+        }
+
+        private async Task<Message> GetEmailByIdInternalAsync(string messageId)
+        {
+            if (_service == null)
+                await InitializeServiceAsync();
+
+            List<MessageGmailPartsDto> messagePartsDtos = new List<MessageGmailPartsDto>();
             var request = _service.Users.Messages.Get("me", messageId);
             request.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Full;
             return await request.ExecuteAsync();
         }
 
-        public async Task<MessagePartBody> GetAttachmentAsync(string messageId, string attachmentId)
+        public async Task<byte[]> GetAttachmentAsync(string messageId, string attachmentId)
         {
             if (_service == null)
                 await InitializeServiceAsync();
 
             var request = _service.Users.Messages.Attachments.Get("me", messageId, attachmentId);
-            return await request.ExecuteAsync();
+            var attachment = await request.ExecuteAsync();
+
+            // Convertir base64 a bytes
+            byte[] fileBytes = Convert.FromBase64String(
+                attachment.Data.Replace('-', '+').Replace('_', '/')
+            );
+            return fileBytes;
         }
 
-        public async Task<Message?> SearchEmailBySubjectAsync(string subject, int maxSearchResults = 10)
+        public async Task<MessageGmailDto> SearchEmailBySubjectAsync(string subject, int maxSearchResults = 10)
         {
             if (_service == null)
                 await InitializeServiceAsync();
@@ -160,7 +196,7 @@ namespace GeneralCrep.Infrastructure.External
             {
                 try
                 {
-                    var full = await GetEmailByIdAsync(m.Id); // asume que tienes GetEmailByIdAsync implementado
+                    var full = await GetEmailByIdInternalAsync(m.Id); // asume que tienes GetEmailByIdAsync implementado
                                                               // InternalDate viene como long (milisegundos desde epoch)
                     if (full != null && full.InternalDate.HasValue)
                     {
@@ -183,10 +219,24 @@ namespace GeneralCrep.Infrastructure.External
                 }
             }
 
-            return newest;
+            MessageGmailDto messageGmailDto = null;
+            if (newest != null || newest.Payload?.Parts == null)
+            {
+                List<MessageGmailPartsDto> messageGmailPartsDtos = (newest.Payload?.Parts ?? new List<MessagePart>())
+                    .Select(p => new MessageGmailPartsDto { Filename = p.Filename, AttachmentId = p.Body?.AttachmentId })
+                    .ToList();
+
+                messageGmailDto = new MessageGmailDto
+                {
+                    Id = newest.Id,
+                    Parts = messageGmailPartsDtos
+                };
+            }
+
+                return messageGmailDto;
         }
 
-        public async Task<List<Message>> GetEmailsByLabelAsync(string labelName, int maxResults = 10)
+        public async Task<List<MessageGmailDto>> GetEmailsByLabelAsync(string labelName, int maxResults = 10)
         {
             if (_service == null)
                 await InitializeServiceAsync();
@@ -206,18 +256,30 @@ namespace GeneralCrep.Infrastructure.External
             var response = await listRequest.ExecuteAsync();
 
             if (response?.Messages == null || response.Messages.Count == 0)
-                return new List<Message>();
+                return new List<MessageGmailDto>();
 
             // 3️⃣ Obtener los mensajes completos
-            var fullMessages = new List<Message>();
+            List<MessageGmailDto> messagePartsDtos = new List<MessageGmailDto>();
 
             foreach (var msg in response.Messages)
             {
-                var full = await GetEmailByIdAsync(msg.Id);
-                fullMessages.Add(full);
+                var full = await GetEmailByIdInternalAsync(msg.Id);
+                MessageGmailDto messagePartsDto = new();
+                if (full != null && full.Payload?.Parts != null)
+                {
+                    messagePartsDto.Id = full.Id;
+                    messagePartsDto.Parts = full.Payload.Parts
+                        .Select(p => new MessageGmailPartsDto
+                        {
+                            Filename = p.Filename,
+                            AttachmentId = p.Body?.AttachmentId
+                        })
+                        .ToList();
+                }
+                messagePartsDtos.Add(messagePartsDto);
             }
 
-            return fullMessages;
+            return messagePartsDtos;
         }
     }
 }

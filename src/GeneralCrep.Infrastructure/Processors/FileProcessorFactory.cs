@@ -1,4 +1,5 @@
 ﻿using GeneralCrep.Domain.Enums;
+using GeneralCrep.Application.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace GeneralCrep.Infrastructure.Processors
 {
-    public class FileProcessorFactory
+    public class FileProcessorFactory : IFileProcessorFactory
     {
         public IFileProcessor GetProcessor(FileType type)
         {

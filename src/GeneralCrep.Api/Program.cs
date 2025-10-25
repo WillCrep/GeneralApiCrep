@@ -17,9 +17,9 @@ builder.Services.AddSwaggerGen();
 //============================
 
 // Gmail
-builder.Services.AddSingleton<GmailApiClient>();
+builder.Services.AddSingleton<IGmailApiClient, GmailApiClient>();
 // File Processors
-builder.Services.AddSingleton<FileProcessorFactory>();
+builder.Services.AddSingleton<IFileProcessorFactory, FileProcessorFactory>();
 // Servicios de aplicación
 builder.Services.AddScoped<IGmailService, GmailService>();
 

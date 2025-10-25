@@ -1,8 +1,7 @@
-﻿using GeneralCrep.Application.Interfaces;
+﻿using GeneralCrep.Application.Dtos;
+using GeneralCrep.Application.Interfaces;
 using GeneralCrep.Domain.Entities;
 using GeneralCrep.Domain.Enums;
-using GeneralCrep.Infrastructure.External;
-using GeneralCrep.Infrastructure.Processors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,10 +12,10 @@ namespace GeneralCrep.Application.Services
 {
     public class GmailService : IGmailService
     {
-        private readonly GmailApiClient _gmailClient;
-        private readonly FileProcessorFactory _processorFactory;
+        private readonly IGmailApiClient _gmailClient;
+        private readonly IFileProcessorFactory _processorFactory;
 
-        public GmailService(GmailApiClient gmailClient, FileProcessorFactory processorFactory)
+        public GmailService(IGmailApiClient gmailClient, IFileProcessorFactory processorFactory)
         {
             _gmailClient = gmailClient;
             _processorFactory = processorFactory;
@@ -24,25 +23,20 @@ namespace GeneralCrep.Application.Services
 
         public async Task<List<FileProcessingResult>> ProcessRecentEmailsAsync(int maxResults = 5)
         {
-            var emails = await _gmailClient.GetRecentEmailsAsync(maxResults);
+            var emailsId = await _gmailClient.GetRecentEmailsAsync(maxResults);
             var results = new List<FileProcessingResult>();
 
-            foreach (var msg in emails)
+            foreach (var id in emailsId)
             {
-                var fullMessage = await _gmailClient.GetEmailByIdAsync(msg.Id);
-                if (fullMessage?.Payload?.Parts == null) continue;
+                IEnumerable<MessageGmailPartsDto> messagePartsDtos = await _gmailClient.GetEmailByIdAsync(id);
+                if (!messagePartsDtos.Any()) continue;
 
-                foreach (var part in fullMessage.Payload.Parts)
+                foreach (var part in messagePartsDtos)
                 {
-                    if (!string.IsNullOrEmpty(part.Filename) && part.Body?.AttachmentId != null)
+                    if (!string.IsNullOrEmpty(part.Filename) && part.AttachmentId != null)
                     {
                         string fileName = part.Filename;
-                        var attachment = await _gmailClient.GetAttachmentAsync(msg.Id, part.Body.AttachmentId);
-
-                        // Convertir base64 a bytes
-                        byte[] fileBytes = Convert.FromBase64String(
-                            attachment.Data.Replace('-', '+').Replace('_', '/')
-                        );
+                        byte[] fileBytes = await _gmailClient.GetAttachmentAsync(id, part.AttachmentId);
 
                         // Guardar temporalmente
                         string tempPath = Path.Combine(Path.GetTempPath(), fileName);
@@ -72,22 +66,17 @@ namespace GeneralCrep.Application.Services
         public async Task<List<FileProcessingResult>> ProcessEmailByIdAsync(string messageId)
         {
             var results = new List<FileProcessingResult>();
-            var fullMessage = await _gmailClient.GetEmailByIdAsync(messageId);
+            IEnumerable<MessageGmailPartsDto> messagePartsDtos = await _gmailClient.GetEmailByIdAsync(messageId);
 
-            if (fullMessage?.Payload?.Parts == null)
+            if (!messagePartsDtos.Any())
                 return results;
 
-            foreach (var part in fullMessage.Payload.Parts)
+            foreach (var part in messagePartsDtos)
             {
-                if (!string.IsNullOrEmpty(part.Filename) && part.Body?.AttachmentId != null)
+                if (!string.IsNullOrEmpty(part.Filename) && part?.AttachmentId != null)
                 {
                     string fileName = part.Filename;
-                    var attachment = await _gmailClient.GetAttachmentAsync(messageId, part.Body.AttachmentId);
-
-                    // Convertir base64 a bytes
-                    byte[] fileBytes = Convert.FromBase64String(
-                        attachment.Data.Replace('-', '+').Replace('_', '/')
-                    );
+                    byte[] fileBytes = await _gmailClient.GetAttachmentAsync(messageId, part.AttachmentId);
 
                     // Guardar temporalmente
                     string tempPath = Path.Combine(Path.GetTempPath(), fileName);
@@ -116,23 +105,18 @@ namespace GeneralCrep.Application.Services
 
         public async Task<List<FileProcessingResult>> ProcessEmailBySubjectAsync(string subject)
         {
-            var message = await _gmailClient.SearchEmailBySubjectAsync(subject);
+            MessageGmailDto message = await _gmailClient.SearchEmailBySubjectAsync(subject);
             var results = new List<FileProcessingResult>();
 
-            if (message == null || message.Payload?.Parts == null)
+            if (message == null || !message.Parts.Any())
                 return results;
 
-            foreach (var part in message.Payload.Parts)
+            foreach (var part in message.Parts)
             {
-                if (part.Filename != null && part.Body?.AttachmentId != null)
+                if (part.Filename != null && part?.AttachmentId != null)
                 {
                     string fileName = part.Filename;
-                    var attachment = await _gmailClient.GetAttachmentAsync(message.Id, part.Body.AttachmentId);
-
-                    // Convertir base64 a bytes
-                    byte[] fileBytes = Convert.FromBase64String(
-                        attachment.Data.Replace('-', '+').Replace('_', '/')
-                    );
+                    byte[] fileBytes = await _gmailClient.GetAttachmentAsync(message.Id, part.AttachmentId);
 
                     string tempPath = Path.Combine(Path.GetTempPath(), fileName);
                     File.WriteAllBytes(tempPath, fileBytes);
@@ -154,24 +138,19 @@ namespace GeneralCrep.Application.Services
 
         public async Task<List<FileProcessingResult>> ProcessEmailsByLabelAsync(string labelName, int maxResults = 10)
         {
-            var emails = await _gmailClient.GetEmailsByLabelAsync(labelName, maxResults);
+            List<MessageGmailDto> emails = await _gmailClient.GetEmailsByLabelAsync(labelName, maxResults);
             var results = new List<FileProcessingResult>();
 
             foreach (var msg in emails)
             {
-                if (msg?.Payload?.Parts == null) continue;
+                if (msg.Parts == null || msg.Parts.Count == 0) continue;
 
-                foreach (var part in msg.Payload.Parts)
+                foreach (var part in msg.Parts)
                 {
-                    if (!string.IsNullOrEmpty(part.Filename) && part.Body?.AttachmentId != null)
+                    if (!string.IsNullOrEmpty(part.Filename) && part?.AttachmentId != null)
                     {
                         string fileName = part.Filename;
-                        var attachment = await _gmailClient.GetAttachmentAsync(msg.Id, part.Body.AttachmentId);
-
-                        // Convertir base64 a bytes
-                        byte[] fileBytes = Convert.FromBase64String(
-                            attachment.Data.Replace('-', '+').Replace('_', '/')
-                        );
+                        byte[] fileBytes = await _gmailClient.GetAttachmentAsync(msg.Id, part.AttachmentId);
 
                         // Guardar temporalmente
                         string tempPath = Path.Combine(Path.GetTempPath(), fileName);

@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GeneralCrep.Application\GeneralCrep.Application.csproj" />
     <ProjectReference Include="..\GeneralCrep.Domain\GeneralCrep.Domain.csproj" />
   </ItemGroup>
 
