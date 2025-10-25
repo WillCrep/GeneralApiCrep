@@ -38,6 +38,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./GeneralApiCrep.sln
 
+      - name: Install coverlet collector
+        run: dotnet add ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj package coverlet.collector
+
       # 🚀 6️⃣ Iniciar análisis SonarCloud
       - name: Begin SonarCloud analysis
         env:
@@ -48,7 +51,7 @@ jobs:
             /o:"willcrep-github" \
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.coverage.exclusions="**/*Tests.cs" \
             /d:sonar.verbose=true
 
@@ -61,9 +64,9 @@ jobs:
         run: |
           dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
             --no-build --configuration Release \
-            --collect:"XPlat Code Coverage" \
-            --results-directory ./TestResults
-          echo "Test coverage generated in ./TestResults"
+            /p:CollectCoverage=true \
+            /p:CoverletOutput=./TestResults/coverage.opencover.xml \
+            /p:CoverletOutputFormat=opencover
 
       - name: List coverage files (debug)
         run: find . -type f -name "coverage*.xml"
