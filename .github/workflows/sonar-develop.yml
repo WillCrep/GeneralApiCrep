@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Necesario para que SonarCloud analice bien el historial
+          fetch-depth: 0  # Necesario para el análisis correcto de SonarCloud
 
       # 🧰 Instalar .NET 8
       - name: Setup .NET
@@ -26,9 +26,27 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      # 🔧 Instalar SonarScanner para .NET
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
       # 🧪 Restaurar dependencias
       - name: Restore dependencies
         run: dotnet restore ./GeneralApiCrep.sln
+
+      # 🚀 Iniciar análisis SonarCloud
+      - name: Begin SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"WillCrep_GeneralApiCrep" \
+            /o:"willcrep-github" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+            /d:sonar.coverage.exclusions="**/*Tests.cs" \
+            /d:sonar.verbose=true
 
       # 🧱 Compilar solución
       - name: Build solution
@@ -38,23 +56,16 @@ jobs:
       - name: Run tests with coverage
         run: dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
-      # 📊 Convertir reporte de cobertura a formato SonarCloud (opcional)
-      - name: Report coverage
-        run: |
-          mkdir -p coverage
-          find ./TestResults -type f -name "coverage.cobertura.xml" -exec cp {} ./coverage/coverage.xml \; || echo "No coverage file found"
-
-      # ☁️ Análisis SonarCloud
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+      # ☁️ Finalizar análisis SonarCloud
+      - name: End SonarCloud analysis
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Necesario para PR decoration
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # Token generado en SonarCloud
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
       # 🧹 Publicar resultados opcional (ayuda a depurar)
       - name: Upload coverage report artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/coverage.xml
+          path: ./TestResults
           if-no-files-found: ignore
