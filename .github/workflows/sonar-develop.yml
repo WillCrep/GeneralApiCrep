@@ -48,7 +48,7 @@ jobs:
             /o:"willcrep-github" \
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+            /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" \
             /d:sonar.coverage.exclusions="**/*Tests.cs" \
             /d:sonar.verbose=true
 
@@ -64,6 +64,9 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./TestResults
           echo "Test coverage generated in ./TestResults"
+
+      - name: List coverage files (debug)
+        run: find . -type f -name "coverage*.xml"
 
       # ☁️ 9️⃣ Finalizar análisis SonarCloud
       - name: End SonarCloud analysis
