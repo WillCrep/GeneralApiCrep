@@ -14,27 +14,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 📦 Checkout del código
+      # 📦 1️⃣ Checkout del código fuente
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Necesario para el análisis correcto de SonarCloud
+          fetch-depth: 0  # Necesario para un análisis correcto de SonarCloud
 
-      # 🧰 Instalar .NET 8
+      # 🧰 2️⃣ Instalar .NET 8 SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      # 🔧 Instalar SonarScanner para .NET
+      # 🔧 3️⃣ Agregar herramientas globales al PATH (dotnet tool install lo requiere)
+      - name: Add .NET tools to PATH
+        run: echo "${HOME}/.dotnet/tools" >> $GITHUB_PATH
+
+      # 🧩 4️⃣ Instalar SonarScanner para .NET
       - name: Install SonarScanner for .NET
         run: dotnet tool install --global dotnet-sonarscanner
 
-      # 🧪 Restaurar dependencias
+      # 🧪 5️⃣ Restaurar dependencias
       - name: Restore dependencies
         run: dotnet restore ./GeneralApiCrep.sln
 
-      # 🚀 Iniciar análisis SonarCloud
+      # 🚀 6️⃣ Iniciar análisis SonarCloud
       - name: Begin SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -48,22 +52,28 @@ jobs:
             /d:sonar.coverage.exclusions="**/*Tests.cs" \
             /d:sonar.verbose=true
 
-      # 🧱 Compilar solución
+      # 🧱 7️⃣ Compilar solución
       - name: Build solution
         run: dotnet build ./GeneralApiCrep.sln --no-restore --configuration Release
 
-      # 🧪 Ejecutar tests con cobertura
+      # 🧪 8️⃣ Ejecutar tests con cobertura de código
       - name: Run tests with coverage
-        run: dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        run: |
+          dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
+            --no-build --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
+          echo "Test coverage generated in ./TestResults"
 
-      # ☁️ Finalizar análisis SonarCloud
+      # ☁️ 9️⃣ Finalizar análisis SonarCloud
       - name: End SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
-      # 🧹 Publicar resultados opcional (ayuda a depurar)
+      # 📊 🔟 Publicar reportes de cobertura como artefacto opcional
       - name: Upload coverage report artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
