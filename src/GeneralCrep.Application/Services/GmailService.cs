@@ -4,8 +4,8 @@ using GeneralCrep.Domain.Entities;
 using GeneralCrep.Domain.Enums;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace GeneralCrep.Application.Services
@@ -17,46 +17,24 @@ namespace GeneralCrep.Application.Services
 
         public GmailService(IGmailApiClient gmailClient, IFileProcessorFactory processorFactory)
         {
-            _gmailClient = gmailClient;
-            _processorFactory = processorFactory;
+            _gmailClient = gmailClient ?? throw new ArgumentNullException(nameof(gmailClient));
+            _processorFactory = processorFactory ?? throw new ArgumentNullException(nameof(processorFactory));
         }
 
         public async Task<List<FileProcessingResult>> ProcessRecentEmailsAsync(int maxResults = 5)
         {
-            var emailsId = await _gmailClient.GetRecentEmailsAsync(maxResults);
+            var emailIds = await _gmailClient.GetRecentEmailsAsync(maxResults);
             var results = new List<FileProcessingResult>();
 
-            foreach (var id in emailsId)
+            foreach (var id in emailIds)
             {
-                IEnumerable<MessageGmailPartsDto> messagePartsDtos = await _gmailClient.GetEmailByIdAsync(id);
-                if (!messagePartsDtos.Any()) continue;
+                var messageParts = await _gmailClient.GetEmailByIdAsync(id);
+                if (messageParts == null) continue;
 
-                foreach (var part in messagePartsDtos)
+                foreach (var part in messageParts)
                 {
-                    if (!string.IsNullOrEmpty(part.Filename) && part.AttachmentId != null)
-                    {
-                        string fileName = part.Filename;
-                        byte[] fileBytes = await _gmailClient.GetAttachmentAsync(id, part.AttachmentId);
-
-                        // Guardar temporalmente
-                        string tempPath = Path.Combine(Path.GetTempPath(), fileName);
-                        await File.WriteAllBytesAsync(tempPath, fileBytes);
-
-                        Console.WriteLine($"Archivo descargado: {fileName}");
-
-                        // Detectar tipo de archivo
-                        var fileType = GetFileType(fileName);
-
-                        // Procesar según tipo
-                        var processor = _processorFactory.GetProcessor(fileType);
-
-                        if (processor != null)
-                        {
-                            var processedResult = processor.Process(tempPath);
-                            processedResult.FileBytes = fileBytes; // adjuntar bytes originales
-                            results.Add(processedResult);
-                        }
-                    }
+                    var processed = await ProcessAttachmentAsync(id, part);
+                    if (processed != null) results.Add(processed);
                 }
             }
 
@@ -66,38 +44,13 @@ namespace GeneralCrep.Application.Services
         public async Task<List<FileProcessingResult>> ProcessEmailByIdAsync(string messageId)
         {
             var results = new List<FileProcessingResult>();
-            IEnumerable<MessageGmailPartsDto> messagePartsDtos = await _gmailClient.GetEmailByIdAsync(messageId);
+            var messageParts = await _gmailClient.GetEmailByIdAsync(messageId);
+            if (messageParts == null) return results;
 
-            if (!messagePartsDtos.Any())
-                return results;
-
-            foreach (var part in messagePartsDtos)
+            foreach (var part in messageParts)
             {
-                if (!string.IsNullOrEmpty(part.Filename) && part?.AttachmentId != null)
-                {
-                    string fileName = part.Filename;
-                    byte[] fileBytes = await _gmailClient.GetAttachmentAsync(messageId, part.AttachmentId);
-
-                    // Guardar temporalmente
-                    string tempPath = Path.Combine(Path.GetTempPath(), fileName);
-                    await File.WriteAllBytesAsync(tempPath, fileBytes);
-
-                    Console.WriteLine($"Archivo descargado: {fileName}");
-
-                    // Detectar tipo de archivo
-                    var fileType = GetFileType(fileName);
-
-                    // Procesar según tipo
-                    var processor = _processorFactory.GetProcessor(fileType);
-
-                    if (processor != null)
-                    {
-                        var processedResult = processor.Process(tempPath);
-
-                        processedResult.FileBytes = fileBytes;
-                        results.Add(processedResult);
-                    }
-                }
+                var processed = await ProcessAttachmentAsync(messageId, part);
+                if (processed != null) results.Add(processed);
             }
 
             return results;
@@ -105,32 +58,16 @@ namespace GeneralCrep.Application.Services
 
         public async Task<List<FileProcessingResult>> ProcessEmailBySubjectAsync(string subject)
         {
-            MessageGmailDto message = await _gmailClient.SearchEmailBySubjectAsync(subject);
             var results = new List<FileProcessingResult>();
+            var message = await _gmailClient.SearchEmailBySubjectAsync(subject);
 
-            if (message == null || !message.Parts.Any())
+            if (message == null || message.Parts == null || message.Parts.Count == 0)
                 return results;
 
             foreach (var part in message.Parts)
             {
-                if (part.Filename != null && part?.AttachmentId != null)
-                {
-                    string fileName = part.Filename;
-                    byte[] fileBytes = await _gmailClient.GetAttachmentAsync(message.Id, part.AttachmentId);
-
-                    string tempPath = Path.Combine(Path.GetTempPath(), fileName);
-                    File.WriteAllBytes(tempPath, fileBytes);
-
-                    var fileType = GetFileType(fileName);
-                    var processor = _processorFactory.GetProcessor(fileType);
-
-                    if (processor != null)
-                    {
-                        var processedResult = processor.Process(tempPath);
-                        processedResult.FileBytes = fileBytes;
-                        results.Add(processedResult);
-                    }
-                }
+                var processed = await ProcessAttachmentAsync(message.Id, part);
+                if (processed != null) results.Add(processed);
             }
 
             return results;
@@ -138,45 +75,57 @@ namespace GeneralCrep.Application.Services
 
         public async Task<List<FileProcessingResult>> ProcessEmailsByLabelAsync(string labelName, int maxResults = 10)
         {
-            List<MessageGmailDto> emails = await _gmailClient.GetEmailsByLabelAsync(labelName, maxResults);
+            var emails = await _gmailClient.GetEmailsByLabelAsync(labelName, maxResults);
             var results = new List<FileProcessingResult>();
+
+            if (emails == null) return results;
 
             foreach (var msg in emails)
             {
-                if (msg.Parts == null || msg.Parts.Count == 0) continue;
-
+                if (msg?.Parts == null || msg.Parts.Count == 0) continue;
                 foreach (var part in msg.Parts)
                 {
-                    if (!string.IsNullOrEmpty(part.Filename) && part?.AttachmentId != null)
-                    {
-                        string fileName = part.Filename;
-                        byte[] fileBytes = await _gmailClient.GetAttachmentAsync(msg.Id, part.AttachmentId);
-
-                        // Guardar temporalmente
-                        string tempPath = Path.Combine(Path.GetTempPath(), fileName);
-                        await File.WriteAllBytesAsync(tempPath, fileBytes);
-
-                        Console.WriteLine($"Archivo descargado desde etiqueta '{labelName}': {fileName}");
-
-                        // Detectar tipo de archivo
-                        var fileType = GetFileType(fileName);
-
-                        // Procesar según tipo
-                        var processor = _processorFactory.GetProcessor(fileType);
-
-                        if (processor != null)
-                        {
-                            var processedResult = processor.Process(tempPath);
-                            processedResult.FileBytes = fileBytes;
-                            results.Add(processedResult);
-                        }
-                    }
+                    var processed = await ProcessAttachmentAsync(msg.Id, part);
+                    if (processed != null) results.Add(processed);
                 }
             }
 
             return results;
         }
 
+        private async Task<FileProcessingResult?> ProcessAttachmentAsync(string messageId, MessageGmailPartsDto part)
+        {
+            if (part == null || string.IsNullOrEmpty(part.Filename) || part.AttachmentId == null)
+                return null;
+
+            string tempPath = null;
+            try
+            {
+                string fileName = part.Filename;
+                byte[] fileBytes = await _gmailClient.GetAttachmentAsync(messageId, part.AttachmentId);
+
+                tempPath = Path.Combine(Path.GetTempPath(), fileName);
+                await File.WriteAllBytesAsync(tempPath, fileBytes);
+
+                Console.WriteLine($"Archivo descargado: {fileName}");
+
+                var fileType = GetFileType(fileName);
+                var processor = _processorFactory.GetProcessor(fileType);
+
+                if (processor == null) return null;
+
+                var processedResult = processor.Process(tempPath);
+                processedResult.FileBytes = fileBytes;
+                return processedResult;
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(tempPath))
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* ignore */ }
+                }
+            }
+        }
 
         private static FileType GetFileType(string fileName)
         {

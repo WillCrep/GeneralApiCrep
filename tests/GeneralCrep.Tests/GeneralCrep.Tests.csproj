@@ -21,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Application\Services\" />
     <Folder Include="Domain\Entities\" />
     <Folder Include="Infrastructure\External\" />
     <Folder Include="Infrastructure\Processors\" />
