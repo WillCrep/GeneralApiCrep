@@ -38,10 +38,11 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./GeneralApiCrep.sln
 
+      # 📦 6️⃣ Instalar coverlet collector (para cobertura)
       - name: Install coverlet collector
         run: dotnet add ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj package coverlet.collector
 
-      # 🚀 6️⃣ Iniciar análisis SonarCloud
+      # 🚀 7️⃣ Iniciar análisis SonarCloud
       - name: Begin SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -51,15 +52,15 @@ jobs:
             /o:"willcrep-github" \
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.coverage.exclusions="**/*Tests.cs" \
             /d:sonar.verbose=true
 
-      # 🧱 7️⃣ Compilar solución
+      # 🧱 8️⃣ Compilar solución
       - name: Build solution
         run: dotnet build ./GeneralApiCrep.sln --no-restore --configuration Release
 
-      # 🧪 8️⃣ Ejecutar tests con cobertura de código
+      # 🧪 9️⃣ Ejecutar tests con cobertura de código
       - name: Run tests with coverage
         run: |
           dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
@@ -68,16 +69,17 @@ jobs:
             /p:CoverletOutput=./TestResults/coverage.opencover.xml \
             /p:CoverletOutputFormat=opencover
 
+      # 🧾 🔍 (opcional) listar los archivos de cobertura
       - name: List coverage files (debug)
         run: find . -type f -name "coverage*.xml"
 
-      # ☁️ 9️⃣ Finalizar análisis SonarCloud
+      # ☁️ 🔟 Finalizar análisis SonarCloud
       - name: End SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
-      # 📊 🔟 Publicar reportes de cobertura como artefacto opcional
+      # 📊 1️⃣1️⃣ Publicar reportes de cobertura como artefacto opcional
       - name: Upload coverage report artifact
         if: always()
         uses: actions/upload-artifact@v4
