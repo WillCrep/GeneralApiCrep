@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GeneralCrep.Domain\GeneralCrep.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

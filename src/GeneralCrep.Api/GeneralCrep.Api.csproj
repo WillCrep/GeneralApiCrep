@@ -12,6 +12,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GeneralCrep.Application\GeneralCrep.Application.csproj" />
+    <ProjectReference Include="..\GeneralCrep.Infrastructure\GeneralCrep.Infrastructure.csproj" />
   </ItemGroup>
+
+<ItemGroup>
+  <None Update="External\Gmail\token.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Link>External\Gmail\credentials.json</Link>
+  </None>
+</ItemGroup>
 
 </Project>

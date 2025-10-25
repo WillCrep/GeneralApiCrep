@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Archivos sensibles de Gmail API
+src/GeneralCrep.Api/External/Gmail/token.json
