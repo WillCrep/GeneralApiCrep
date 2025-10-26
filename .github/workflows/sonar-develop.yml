@@ -61,14 +61,20 @@ jobs:
         run: dotnet build ./GeneralApiCrep.sln --no-restore --configuration Release
 
       # 🧪 9️⃣ Ejecutar tests con cobertura de código
-      - name: Run tests with coverage
+      - name: Run tests with coverage (debug mode)
         run: |
+          echo "=== Ejecutando tests con cobertura ==="
           dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
-          --no-build --configuration Release \
-          /p:CollectCoverage=true \
-          /p:CoverletOutput=./tests/GeneralCrep.Tests/TestResults/coverage.opencover.xml \
-          /p:CoverletOutputFormat=opencover
-
+            --no-build --configuration Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput=./TestResults/coverage.opencover.xml \
+            /p:CoverletOutputFormat=opencover \
+            /p:Exclude="[*.Tests]*" \
+            /v:detailed
+          echo "=== Listando posibles archivos de cobertura ==="
+          find . -type f -name "coverage*.xml"
+          echo "=== Listando carpeta TestResults ==="
+          ls -R ./tests || true
 
       # 🧾 🔍 (opcional) listar los archivos de cobertura
       - name: List coverage files (debug)
