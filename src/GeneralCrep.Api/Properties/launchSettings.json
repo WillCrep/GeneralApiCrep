@@ -16,7 +16,9 @@
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5258",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GMAIL_CLIENT_ID": "",
+        "GMAIL_CLIENT_SECRET": ""
       }
     },
     "https": {
@@ -26,7 +28,10 @@
       "launchUrl": "swagger",
       "applicationUrl": "https://localhost:7134;http://localhost:5258",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GMAIL_CLIENT_ID": "",
+        "GMAIL_CLIENT_SECRET": "",
+        "GMAIL_REDIRECT_URI": ""
       }
     },
     "IIS Express": {
@@ -34,7 +39,9 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GMAIL_CLIENT_ID": "",
+        "GMAIL_CLIENT_SECRET": ""
       }
     }
   }
