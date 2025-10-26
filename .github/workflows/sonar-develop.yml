@@ -66,7 +66,7 @@ jobs:
           dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
             --no-build --configuration Release \
             /p:CollectCoverage=true \
-            /p:CoverletOutput=./TestResults/coverage.opencover.xml \
+            /p:CoverletOutput=tests/GeneralCrep.Tests/TestResults/coverage.opencover.xml\
             /p:CoverletOutputFormat=opencover
 
       # 🧾 🔍 (opcional) listar los archivos de cobertura
