@@ -26,6 +26,13 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      # ⚙️ 2.1️⃣ Forzar uso del SDK .NET 8 (evita conflictos con .NET 9)
+      - name: Force .NET 8 SDK usage
+        run: |
+          echo "export DOTNET_MULTILEVEL_LOOKUP=0" >> $GITHUB_ENV
+          echo "export DOTNET_ROOT=$(dirname $(dirname $(which dotnet)))" >> $GITHUB_ENV
+          dotnet --info
+
       # 🔧 3️⃣ Agregar herramientas globales al PATH (dotnet tool install lo requiere)
       - name: Add .NET tools to PATH
         run: echo "${HOME}/.dotnet/tools" >> $GITHUB_PATH
@@ -40,7 +47,7 @@ jobs:
 
       # 📦 6️⃣ Instalar coverlet collector (para cobertura)
       - name: Install coverlet collector
-        run: dotnet add ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj package coverlet.collector
+        run: dotnet add ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj package coverlet.collector --version 6.0.0
 
       # 🚀 7️⃣ Iniciar análisis SonarCloud
       - name: Begin SonarCloud analysis
@@ -67,18 +74,12 @@ jobs:
           dotnet test ./tests/GeneralCrep.Tests/GeneralCrep.Tests.csproj \
             --no-build --configuration Release \
             /p:CollectCoverage=true \
-            /p:CoverletOutput=./TestResults/coverage.opencover.xml \
+            /p:CoverletOutput=./tests/GeneralCrep.Tests/TestResults/coverage.opencover.xml \
             /p:CoverletOutputFormat=opencover \
             /p:Exclude="[*.Tests]*" \
             /v:detailed
-          echo "=== Listando posibles archivos de cobertura ==="
+          echo "=== Listando archivos de cobertura ==="
           find . -type f -name "coverage*.xml"
-          echo "=== Listando carpeta TestResults ==="
-          ls -R ./tests || true
-
-      # 🧾 🔍 (opcional) listar los archivos de cobertura
-      - name: List coverage files (debug)
-        run: find . -type f -name "coverage*.xml"
 
       # ☁️ 🔟 Finalizar análisis SonarCloud
       - name: End SonarCloud analysis
